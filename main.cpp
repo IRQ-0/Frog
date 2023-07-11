@@ -10,8 +10,9 @@
 #include "Host.h"
 #include "telnet.h"
 #include "hostMonitor.h"
+#include "static.h"
 
-#define DEFAULT_HOSTS_LOCATION "y:\\cpp\\sysmon\\hosts"
+#define DEFAULT_HOSTS_LOCATION ".\\hosts"
 
 #define PROMPT "frg> "
 
@@ -26,6 +27,20 @@ void monitorStart(std::vector<Host>);
 SOCKET hostConnect(Host);
 void thr(hostMonitor, int);
 void gotoxy(int, int);
+
+void getTop(std::string, std::vector<Host>);
+void getDf(std::string, std::vector<Host>);
+void getBlk(std::string, std::vector<Host>);
+void getIf(std::string, std::vector<Host>);
+
+/*
+TCP COMMANDS:
+R - get mem, cpu, proc etc. load info
+T - top page
+D - df screen
+B - lsblk screen
+I - ip a and ifconfig sreen
+*/
 
 
 int main(int argc, char** argv) {
@@ -42,6 +57,8 @@ int main(int argc, char** argv) {
     cursor.bVisible = TRUE;
 
     SetConsoleCursorInfo(console, &cursor);
+
+    SetConsoleOutputCP(CP_UTF8);
 
     std::cout << "FROG v1.0" << std::endl << std::endl;
     if (argc < 2) {
@@ -93,8 +110,32 @@ int main(int argc, char** argv) {
 
         } else if (commandBuffer.substr(0, 3).compare("run") == 0) {
             monitorStart(hosts);
-            
 
+        } else if (commandBuffer.substr(0, 6).compare("gettop") == 0) {
+            try {
+                getTop(commandBuffer.substr(7, (commandBuffer.length() - 7)), hosts);
+            } catch (const std::out_of_range& oor) {
+                std::cout << "No argument" << std::endl;
+            }
+
+        } else if (commandBuffer.substr(0, 5).compare("getdf") == 0) {
+            try {
+                getDf(commandBuffer.substr(6, (commandBuffer.length() - 6)), hosts);
+            } catch (const std::out_of_range& oor) {
+                std::cout << "No argument" << std::endl;
+            }
+        } else if (commandBuffer.substr(0, 6).compare("getblk") == 0) {
+            try {
+                getBlk(commandBuffer.substr(7, (commandBuffer.length() - 7)), hosts);
+            } catch (const std::out_of_range& oor) {
+                std::cout << "No argument" << std::endl;
+            }
+        } else if (commandBuffer.substr(0, 5).compare("getif") == 0) {
+            try {
+                getIf(commandBuffer.substr(6, (commandBuffer.length() - 6)), hosts);
+            } catch (const std::out_of_range& oor) {
+                std::cout << "No argument" << std::endl;
+            }
         } else {
             std::cout << "Invalid command" << std::endl;
         }
@@ -103,6 +144,72 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
+void getIf(std::string in, std::vector<Host> hosts) {
+    SOCKET sock;
+    int err = 0;
+
+    for (Host h : hosts) {
+        if (h.alias == in) {
+            sock = hostConnect(h);
+
+            Static s(sock);
+            s.getIf();
+
+            close(sock);
+        }
+    }
+}
+
+void getBlk(std::string in, std::vector<Host> hosts) {
+    SOCKET sock;
+    int err = 0;
+
+    for (Host h : hosts) {
+        if (h.alias == in) {
+            sock = hostConnect(h);
+
+            Static s(sock);
+            s.getBlk();
+
+            close(sock);
+        }
+    }
+}
+
+void getDf(std::string in, std::vector<Host> hosts) {
+    SOCKET sock;
+    int err = 0;
+
+    for (Host h : hosts) {
+        if (h.alias == in) {
+            sock = hostConnect(h);
+
+            Static s(sock);
+            s.getDf();
+
+            close(sock);
+        }
+    }
+}
+
+void getTop(std::string in, std::vector<Host> hosts) {
+    SOCKET sock;
+    int err = 0;
+
+    for (Host h : hosts) {
+        if (h.alias == in) {
+            sock = hostConnect(h);
+
+            Static s(sock);
+            s.getTop();
+
+            close(sock);
+        }
+    }
+}
+
+
 
 void gotoxy(int x, int y) {
     COORD p;
@@ -308,12 +415,18 @@ void writeHost(std::string location, std::string commandLine) {
 
 void printHelp(void) {
     std::cout << "Frog v1.0 help:" << std::endl << std::endl;
-    std::cout << " help                             = display this" << std::endl;
+    std::cout << "HOST MANAGEMENT:" << std::endl;
     std::cout << " addhost <alias> <ip addr> <port> = add host to hosts location" << std::endl;
     std::cout << " delhost <alias>                  = delete host from hosts location" << std::endl;
     std::cout << " listhost                         = list all loaded hosts" << std::endl;
     std::cout << " reloadhost                       = reload hosts" << std::endl;
     std::cout << " run                              = start monitor" << std::endl;
+    std::cout << std::endl << "STATIC FUNCTIONS:" << std::endl;
+    std::cout << " gettop <alias>                   = get actual top screen" << std::endl;
+    std::cout << " getdf <alias>                    = get disk usage screen" << std::endl;
+    std::cout << " getblk <alias>                   = get block devices list screen" << std::endl;
+    std::cout << std::endl << "OTHER:" << std::endl;
+    std::cout << " help                             = display this" << std::endl;
     std::cout << " exit                             = exit from application" << std::endl;
 
     std::cout << std::endl;
