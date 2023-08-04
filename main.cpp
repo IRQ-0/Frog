@@ -42,6 +42,7 @@ void getTop(std::string, std::vector<Host>);
 void getDf(std::string, std::vector<Host>);
 void getBlk(std::string, std::vector<Host>);
 void getIf(std::string, std::vector<Host>);
+void getService(std::string, std::vector<Host>);
 
 void spcStatus(std::string);
 void spcAdd(std::string, std::string);
@@ -57,6 +58,7 @@ T - top page
 D - df screen
 B - lsblk screen
 I - ip a and ifconfig sreen
+V<service> - service status
 */
 
 
@@ -217,6 +219,13 @@ int main(int argc, char** argv) {
         } else if (commandBuffer.substr(0, 9).compare("spcreload") == 0) {
             spcs = loadSpcs(spcsLocation);
 
+        } else if (commandBuffer.substr(0, 10).compare("getservice") == 0) {
+            try {
+                getService(commandBuffer.substr(11, (commandBuffer.length() - 11)), hosts);
+            } catch (const std::out_of_range& oor) {
+                std::cout << "No argument" << std::endl;
+            }
+
         } else {
             std::cout << "Invalid command" << std::endl;
         }
@@ -256,7 +265,8 @@ void spcList(std::vector<spcProps> spcs) {
 void spcHelp(void) {
     std::cout << std::endl;
     std::cout << "Help for adding SPC:" << std::endl;
-    std::cout << "spcadd <COM port> <baud rate> <parity checking> <parity> <stop bits> <byte size>" << std::endl;
+    std::cout << "spcadd <alias> <COM port> <baud rate> <parity checking> <parity> <stop bits> <byte size>" << std::endl;
+    std::cout << " <alias>             = name for SPC" << std::endl;
     std::cout << " <COM port>          = COM port where your device is connected to (for example COM1, COM2 etc.)" << std::endl;
     std::cout << " <baud rate>         = baud rate your device uses (common values: 4800, 9600 etc.)" << std::endl;
     std::cout << " <parity checking>   = parity checking and throwing errors (take a look to DCB structure description). Possible values: true or false" << std::endl;
@@ -415,7 +425,33 @@ void spcStatus(std::string comPort) {
         return;
     }
 
-    
+}
+
+void getService(std::string in, std::vector<Host> hosts) {
+    std::stringstream ss(in);
+    std::string alias, service;
+    SOCKET sock;
+    int err = 0;
+
+    std::getline(ss, alias, ' ');
+    std::getline(ss, service, ' ');
+
+    if ((alias.compare("") == 0) || (service.compare("") == 0)) {
+        std::cout << "No arguments" << std::endl;
+    }
+
+    //std::cout << "alias: " << alias << " service: " << service << std::endl;
+
+    for (Host h : hosts) {
+        if ((h.alias).compare(alias) == 0) {
+            sock = hostConnect(h);
+
+            Static s(sock);
+            s.getService(service);
+
+            close(sock);
+        }
+    }
 }
 
 void getIf(std::string in, std::vector<Host> hosts) {
@@ -698,9 +734,11 @@ void printHelp(void) {
     std::cout << " gettop <alias>                   = get actual top screen" << std::endl;
     std::cout << " getdf <alias>                    = get disk usage screen" << std::endl;
     std::cout << " getblk <alias>                   = get block devices list screen" << std::endl;
+    std::cout << " getif <alias>                    = get internet ingfo" << std::endl;
+    std::cout << " getservice <service> <alias>     = get status of service" << std::endl;
     std::cout << std::endl << "SPC FUNCTIONS:" << std::endl;
     std::cout << " spchelp                          = display help screen about adding a SPC" << std::endl;
-    std::cout << " spcadd <see spchelp>             = add SCP" << std::endl;
+    std::cout << " spcadd <see spchelp>             = add SPC" << std::endl;
     std::cout << " spcstatus <com port>             = get status from SPC device" << std::endl;
     std::cout << " spclist                          = list all loaded SPCs" << std::endl;
     std::cout << " spcreload                        = reload all SPCs" << std::endl;
