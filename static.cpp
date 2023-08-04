@@ -67,3 +67,19 @@ int Static::getIf(void) {
 
 	return 0;
 }
+
+int Static::getService(std::string name) {
+	std::string service;
+	sendData(this->mainSock, (std::string("V") + name));
+	
+	service = recvData(this->mainSock);
+
+	if (service.length() <= 0) {
+		std::cout << "Error while reading input data" << std::endl;
+		return 1;
+	}
+
+	std::cout << service << std::endl;
+
+	return 0;
+}
