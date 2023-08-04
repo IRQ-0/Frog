@@ -13,6 +13,7 @@ class Static {
 		int getDf(void);
 		int getBlk(void);
 		int getIf(void);
+		int getService(std::string);
 
 	private:
 		SOCKET mainSock;
