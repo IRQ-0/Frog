@@ -44,10 +44,12 @@ void getBlk(std::string, std::vector<Host>);
 void getIf(std::string, std::vector<Host>);
 void getService(std::string, std::vector<Host>);
 
-void spcStatus(std::string);
+void spcStatus(std::string, std::vector<spcProps>);
 void spcAdd(std::string, std::string);
 void spcDel(std::string, std::string);
 void spcList(std::vector<spcProps>);
+void spcRelayOn(std::string, std::vector<spcProps>);
+void spcRelayOff(std::string, std::vector<spcProps>);
 void spcHelp(void);
 
 
@@ -191,7 +193,7 @@ int main(int argc, char** argv) {
             
         } else if (commandBuffer.substr(0, 9).compare("spcstatus") == 0) {
             try {
-                spcStatus(commandBuffer.substr(10, (commandBuffer.length() - 10)));
+                spcStatus(commandBuffer.substr(10, (commandBuffer.length() - 10)), spcs);
             } catch (const std::out_of_range& oor) {
                 std::cout << "No argument" << std::endl;
             }
@@ -226,6 +228,20 @@ int main(int argc, char** argv) {
                 std::cout << "No argument" << std::endl;
             }
 
+        } else if (commandBuffer.substr(0, 7).compare("relayon") == 0) {
+            try {
+                spcRelayOn(commandBuffer.substr(8, (commandBuffer.length() - 8)), spcs);
+            } catch (const std::out_of_range& oor) {
+                std::cout << "No argument" << std::endl;
+            }
+
+        } else if (commandBuffer.substr(0, 8).compare("relayoff") == 0) {
+            try {
+                spcRelayOff(commandBuffer.substr(9, (commandBuffer.length() - 9)), spcs);
+            } catch (const std::out_of_range& oor) {
+                std::cout << "No argument" << std::endl;
+            }
+
         } else {
             std::cout << "Invalid command" << std::endl;
         }
@@ -233,6 +249,86 @@ int main(int argc, char** argv) {
 
 
     return 0;
+}
+
+inline int checkNumber(std::string in) {
+    for (int i = 0; i < in.length(); i++) {
+        if (!isdigit(in[i])) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void spcRelayOn(std::string commandLine, std::vector<spcProps> spcs) {
+    std::stringstream ss(commandLine);
+    std::string num, alias;
+
+    std::getline(ss, alias, ' ');
+    std::getline(ss, num, ' ');
+
+    if (checkNumber(num) != 0) {
+        std::cout << "Invalid relay number" << std::endl;
+    }
+
+    unsigned char number = (unsigned char) atoi(num.c_str());
+
+    for (spcProps spc : spcs) {
+        if (spc.alias.compare(alias) == 0) {
+            RS r(spc.comPort, spc.baud, spc.fParity, spc.parity, spc.stopBits, spc.byteSize);
+            Spc spc(r);
+
+            if (spc.connect() != 0) {
+                r.RsClose();
+                return;
+            }
+
+            if (spc.relayOn(number) != 0) {
+                r.RsClose();
+                return;
+            }
+
+            return;
+        }
+    }
+
+    std::cout << "Cannot find " << alias << std::endl;
+}
+
+void spcRelayOff(std::string commandLine, std::vector<spcProps> spcs) {
+    std::stringstream ss(commandLine);
+    std::string num, alias;
+
+    std::getline(ss, alias, ' ');
+    std::getline(ss, num, ' ');
+
+    if (checkNumber(num) != 0) {
+        std::cout << "Invalid relay number" << std::endl;
+    }
+
+    unsigned char number = (unsigned char) atoi(num.c_str());
+
+    for (spcProps spc : spcs) {
+        if (spc.alias.compare(alias) == 0) {
+            RS r(spc.comPort, spc.baud, spc.fParity, spc.parity, spc.stopBits, spc.byteSize);
+            Spc spc(r);
+
+            if (spc.connect() != 0) {
+                r.RsClose();
+                return;
+            }
+
+            if (spc.relayOff(number) != 0) {
+                r.RsClose();
+                return;
+            }
+
+            return;
+        }
+    }
+
+    std::cout << "Cannot find " << alias << std::endl;
 }
 
 void spcDel(std::string location, std::string alias) {
@@ -281,16 +377,6 @@ void spcHelp(void) {
     std::cout << "   15 - one and a half stop bits (look at DCB structure)" << std::endl;
     std::cout << "   2 - two stop bits" << std::endl;
     std::cout << " <byte size>         = length of data section of a packet (common values: from 5 to 8)" << std::endl << std::endl;
-}
-
-inline int checkNumber(std::string in) {
-    for (int i = 0; i < in.length(); i++) {
-        if (!isdigit(in[i])) {
-            return 1;
-        }
-    }
-
-    return 0;
 }
 
 void spcAdd(std::string commandLine, std::string location) {
@@ -411,20 +497,27 @@ void spcAdd(std::string commandLine, std::string location) {
     f.close();
 }
 
-void spcStatus(std::string comPort) {
-    RS r(comPort, SPC_CONF_BAUD, SPC_CONF_FPARITY, SPC_CONF_PARITY, SPC_CONF_STOPBITS, SPC_CONF_BYTESIZE);
-    Spc spc(r);
+void spcStatus(std::string alias, std::vector<spcProps> spcs) {
+    for (spcProps spc : spcs) {
+        if (spc.alias.compare(alias) == 0) {
+            RS r(spc.comPort, spc.baud, spc.fParity, spc.parity, spc.stopBits, spc.byteSize);
+            Spc spc(r);
 
-    if (spc.connect() != 0) {
-        r.RsClose();
-        return;
+            if (spc.connect() != 0) {
+                r.RsClose();
+                return;
+            }
+
+            if (spc.getStatus() != 0) {
+                r.RsClose();
+                return;
+            }
+
+            return;
+        }
     }
 
-    if (spc.getStatus() != 0) {
-        r.RsClose();
-        return;
-    }
-
+    std::cout << "Cannot find " << alias << std::endl;
 }
 
 void getService(std::string in, std::vector<Host> hosts) {
@@ -739,9 +832,11 @@ void printHelp(void) {
     std::cout << std::endl << "SPC FUNCTIONS:" << std::endl;
     std::cout << " spchelp                          = display help screen about adding a SPC" << std::endl;
     std::cout << " spcadd <see spchelp>             = add SPC" << std::endl;
-    std::cout << " spcstatus <com port>             = get status from SPC device" << std::endl;
+    std::cout << " spcstatus <alias>             = get status from SPC device" << std::endl;
     std::cout << " spclist                          = list all loaded SPCs" << std::endl;
     std::cout << " spcreload                        = reload all SPCs" << std::endl;
+    std::cout << " relayon <alias> <number>         = turn on specified relay" << std::endl;
+    std::cout << " relayoff <alias> <number>        = turn off specified relay" << std::endl;
     std::cout << " spcdel <alias>                   = delete SPC" << std::endl;
     std::cout << std::endl << "OTHER:" << std::endl;
     std::cout << " help                             = display this" << std::endl;
